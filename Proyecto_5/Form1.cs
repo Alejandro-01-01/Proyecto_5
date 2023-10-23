@@ -16,17 +16,39 @@ namespace Proyecto_5
 {
     public partial class Form1 : Form
     {
+        string conexionSQL = "Server=localhost;Port=3306;Database=ProgramacionAvanzada;Uid=root;Pwd=Alejandro_01;";
         public Form1()
         {
             InitializeComponent();
-            tb_Edad.TextChanged += ValidarEdad;
-            tb_Estatura.TextChanged += ValidarEstatura;
-            tb_Telefono.TextChanged += ValidarTelefono;
             tb_Nombre.TextChanged += ValidarNombre;
             tb_Apellidos.TextChanged += ValidarApellidos;
+            tb_Telefono.TextChanged += ValidarTelefono;
+            tb_Estatura.TextChanged += ValidarEstatura;
+            tb_Edad.TextChanged += ValidarEdad;
 
         }
+        private void InsertarRegistros( string nombre, string apellido, string telefono,decimal estatura,int edad, string genero)
+        { 
+            using (MySqlConnection conection = new MySqlConnection(conexionSQL))
+            {
+                conection.Open();
 
+                string insertQuery = "INSERT INTO formulario(nombre, apellido, telefono, estatura , edad, genero)" + "VALUES (@nombre, @apellido, @telefono, @estatura, @edad, @genero)";
+
+                using (MySqlCommand command = new MySqlCommand(insertQuery, conection))
+                {
+                    command.Parameters.AddWithValue("@nombre", nombre);
+                    command.Parameters.AddWithValue("@apellido", apellido);
+                    command.Parameters.AddWithValue("@telefono", telefono);
+                    command.Parameters.AddWithValue("@estatura", estatura);
+                    command.Parameters.AddWithValue("@edad", edad);
+                    command.Parameters.AddWithValue("@genero", genero);
+
+                    command.ExecuteNonQuery();
+                }
+                conection.Close();
+            }
+        }
         private void bt_Guardar_Click(object sender, EventArgs e)
         {
             string Nombres = tb_Nombre.Text;
@@ -64,8 +86,17 @@ namespace Proyecto_5
                         if (archivoExiste)
                         {
                             writer.WriteLine();
+
+                            InsertarRegistros(Nombres, Apellidos, Telefono, decimal.Parse(Estatura), int.Parse(Edad), Genero);
+                            MessageBox.Show("Datos ingresados correctamente. ");
                         }
-                        writer.WriteLine(datos);
+                        else
+                        {
+                            writer.WriteLine(datos);
+                            InsertarRegistros(Nombres, Apellidos, Telefono, decimal.Parse(Estatura),int.Parse(Edad), Genero);
+                            MessageBox.Show("Datos ingresados correctamente. ");
+
+                        }
                     }
                 }
                 MessageBox.Show("Datos guardados con exito:\n\n" + datos, "informacion", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -89,10 +120,17 @@ namespace Proyecto_5
             return decimal.TryParse(valor, out resultado);
 
         }
-        private bool EsEnterovalidoDe10Digitos(string valor)
+        private bool EsEnterovalidoDe10Digitos(string input)
         {
-            long resultado;
-            return long.TryParse(valor,out resultado) && valor.Length == 10; 
+            if(input.Length != 10)
+            {
+                return false;
+            }
+            if (!input.All(char.IsDigit))
+            {
+                return false;
+            }
+            return true;
         }
         private bool EsTextovalido(string valor)
         {
@@ -121,17 +159,22 @@ namespace Proyecto_5
         {
             TextBox textBox = (TextBox)senter;
             string input = textBox.Text;
-            if (input.Length>10)
+            if (input.Length<10)
             {
                 if (!EsEnterovalidoDe10Digitos(input))
                 {
-                    MessageBox.Show("Por favor, ingrese un numero de telefono valido de 10 digitos.","Error", MessageBoxButtons.OK,MessageBoxIcon.Error);
-                    textBox.Clear();
+                    return;
                 }
 
-            }else if (!EsEnterovalidoDe10Digitos(input))
+            }
+            if (!EsEnterovalidoDe10Digitos(input))
             {
+                {
                 MessageBox.Show("Por favor, ingrese un numero de telefono valido de 10 digitos.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+
+                }
+                
             }
         }
         private void ValidarNombre(object senter, EventArgs e)
