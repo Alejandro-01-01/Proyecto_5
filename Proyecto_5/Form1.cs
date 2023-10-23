@@ -8,16 +8,47 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using System.Text.RegularExpressions;
+using System.Drawing.Text;
+using MySql.Data.MySqlClient;
 
 namespace Proyecto_5
 {
     public partial class Form1 : Form
     {
+        string conexionSQL = "Server=localhost;Port=3306;Database=ProgramacionAvanzada;Uid=root;Pwd=Alejandro_01;";
         public Form1()
         {
             InitializeComponent();
-        }
+            tb_Nombre.TextChanged += ValidarNombre;
+            tb_Apellidos.TextChanged += ValidarApellidos;
+            tb_Telefono.TextChanged += ValidarTelefono;
+            tb_Estatura.TextChanged += ValidarEstatura;
+            tb_Edad.TextChanged += ValidarEdad;
 
+        }
+        private void InsertarRegistros( string nombre, string apellido, string telefono,decimal estatura,int edad, string genero)
+        { 
+            using (MySqlConnection conection = new MySqlConnection(conexionSQL))
+            {
+                conection.Open();
+
+                string insertQuery = "INSERT INTO formulario(nombre, apellido, telefono, estatura , edad, genero)" + "VALUES (@nombre, @apellido, @telefono, @estatura, @edad, @genero)";
+
+                using (MySqlCommand command = new MySqlCommand(insertQuery, conection))
+                {
+                    command.Parameters.AddWithValue("@nombre", nombre);
+                    command.Parameters.AddWithValue("@apellido", apellido);
+                    command.Parameters.AddWithValue("@telefono", telefono);
+                    command.Parameters.AddWithValue("@estatura", estatura);
+                    command.Parameters.AddWithValue("@edad", edad);
+                    command.Parameters.AddWithValue("@genero", genero);
+
+                    command.ExecuteNonQuery();
+                }
+                conection.Close();
+            }
+        }
         private void bt_Guardar_Click(object sender, EventArgs e)
         {
             string Nombres = tb_Nombre.Text;
@@ -35,30 +66,134 @@ namespace Proyecto_5
             {
                 Genero = "Mujer";
             }
+            if (EsEnterovalido(Edad) && EsDecimalvalido(Estatura) && EsEnterovalidoDe10Digitos(Telefono) && EsTextovalido(Nombres) && EsTextovalido(Apellidos))
+            {
+                string datos = $"Nombres: {Nombres}\r\nApellios: { Apellidos}\r\nTelefono: { Telefono} kg\r\nEstatura: { Estatura} cm\r\nEdad: {Edad} años\r\nGenero: { Genero}";
 
-            string datos = $"Nombres: {Nombres}\r\nApellios: { Apellidos}\r\nTelefono: { Telefono} kg\r\nEstatura: { Estatura} cm\r\nEdad: {Edad} años\r\nGenero: { Genero}";
+                string rutaarchivo = "C:/Users/moram/Documents/3Mdatos.txt"; 
 
-            string rutaarchivo = "C:/Users/moram/Documents/3Mdatos.txt"; 
+                bool archivoExiste = File.Exists(rutaarchivo);
+    
+                Console.WriteLine(archivoExiste);
+                if (archivoExiste == false) 
+                { 
+                    File.WriteAllText(rutaarchivo, datos);
+                }
+                else
+                {
+                    using (StreamWriter writer = new StreamWriter(rutaarchivo, true))
+                    {
+                        if (archivoExiste)
+                        {
+                            writer.WriteLine();
 
-            bool archivoExiste = File.Exists(rutaarchivo);
+                            InsertarRegistros(Nombres, Apellidos, Telefono, decimal.Parse(Estatura), int.Parse(Edad), Genero);
+                            MessageBox.Show("Datos ingresados correctamente. ");
+                        }
+                        else
+                        {
+                            writer.WriteLine(datos);
+                            InsertarRegistros(Nombres, Apellidos, Telefono, decimal.Parse(Estatura),int.Parse(Edad), Genero);
+                            MessageBox.Show("Datos ingresados correctamente. ");
 
-            Console.WriteLine(archivoExiste);
-            if (archivoExiste == false) 
-            { 
-                File.WriteAllText(rutaarchivo, datos);
+                        }
+                    }
+                }
+                MessageBox.Show("Datos guardados con exito:\n\n" + datos, "informacion", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
             }
             else
             {
-                using (StreamWriter writer = new StreamWriter(rutaarchivo, true))
-                {
-                    if (archivoExiste)
-                    {
-                        writer.WriteLine();
-                    }
-                    writer.WriteLine(datos);
-                }
+                MessageBox.Show("Por favor, ingrese datos validos en los campos. ", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            MessageBox.Show("Datos guardados con exito:\n\n" + datos, "informacion", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            
+            
+        }
+        private bool EsEnterovalido(string valor)
+        {
+            int resultado;
+            return int.TryParse(valor, out resultado);
+        }
+        private bool EsDecimalvalido(string valor)
+        {
+            decimal resultado;
+            return decimal.TryParse(valor, out resultado);
+
+        }
+        private bool EsEnterovalidoDe10Digitos(string input)
+        {
+            if(input.Length != 10)
+            {
+                return false;
+            }
+            if (!input.All(char.IsDigit))
+            {
+                return false;
+            }
+            return true;
+        }
+        private bool EsTextovalido(string valor)
+        {
+            return Regex.IsMatch(valor, @"^[a-zA-Z\s]+$");
+        }
+
+        private void ValidarEdad(object senter, EventArgs e)
+        {
+            TextBox textBox = (TextBox) senter;
+            if (!EsEnterovalido(textBox.Text))
+            {
+                MessageBox.Show("Por favor, ingrese una edad valida.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+            }
+        }
+        private void ValidarEstatura(object senter, EventArgs e)
+        {
+            TextBox textBox = (TextBox)senter;
+            if (!EsDecimalvalido(textBox.Text))
+            {
+                MessageBox.Show("Por favor, ingrese una estatura valida.", "Error",MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+            }
+        }
+        private void ValidarTelefono(object senter, EventArgs e)
+        {
+            TextBox textBox = (TextBox)senter;
+            string input = textBox.Text;
+            if (input.Length<10)
+            {
+                if (!EsEnterovalidoDe10Digitos(input))
+                {
+                    return;
+                }
+
+            }
+            if (!EsEnterovalidoDe10Digitos(input))
+            {
+                {
+                MessageBox.Show("Por favor, ingrese un numero de telefono valido de 10 digitos.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+
+                }
+                
+            }
+        }
+        private void ValidarNombre(object senter, EventArgs e)
+        {
+            TextBox textBox = (TextBox)senter;
+            if (!EsTextovalido(textBox.Text))
+            {
+                MessageBox.Show("Por favor, ingrese un nombre valido (solo letras y espacio).", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+            }
+        }
+        private void ValidarApellidos(object senter, EventArgs e)
+        {
+            TextBox textBox = (TextBox)senter;
+            if (!EsTextovalido(textBox.Text))
+            {
+                MessageBox.Show("Por favor, ingrese apellidos validos (solo letras y espacio).", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox.Clear();
+            }
         }
 
         private void bt_Cancelar_Click(object sender, EventArgs e)
